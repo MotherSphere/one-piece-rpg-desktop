@@ -9,6 +9,12 @@ on:
 permissions:
   contents: write
 
+# Cancel any in-flight nightly build when a new push lands. Tag/manual builds
+# get a unique group so they never cancel each other.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref == 'refs/heads/main' }}
+
 jobs:
   # Wipe the previous nightly release+tag so the build matrix uploads to a
   # fresh, clean release. Skipped on tag pushes (versioned releases) and
@@ -125,3 +131,46 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           args: ${{ matrix.args }}
+
+      # ---- Locate the raw portable binary that tauri-action built -----------
+      # tauri-action only uploads bundled installers (.msi/.exe-setup/.dmg/...)
+      # but never the raw exe/binary. We grab it from target/ and rename it
+      # for clarity, then upload to the same release.
+      - name: Locate & rename portable binary
+        if: github.event_name == 'push'
+        shell: bash
+        run: |
+          case "${{ matrix.platform }}" in
+            windows-latest)
+              src="src-tauri/target/release/one-piece-rpg-desktop.exe"
+              dst="onepiecerpg-lejeu-windows-x64-portable.exe"
+              ;;
+            ubuntu-22.04)
+              src="src-tauri/target/release/one-piece-rpg-desktop"
+              dst="onepiecerpg-lejeu-linux-x64-portable"
+              ;;
+            macos-latest)
+              target="${{ matrix.rust-targets }}"
+              src="src-tauri/target/${target}/release/one-piece-rpg-desktop"
+              if [[ "$target" == "aarch64-apple-darwin" ]]; then
+                dst="onepiecerpg-lejeu-macos-arm64-portable"
+              else
+                dst="onepiecerpg-lejeu-macos-x64-portable"
+              fi
+              ;;
+          esac
+          cp "$src" "$dst"
+          echo "PORTABLE_BIN=$dst" >> "$GITHUB_ENV"
+
+      - name: Upload portable binary to release
+        if: github.event_name == 'push'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            tag="${{ github.ref_name }}"
+          else
+            tag="nightly"
+          fi
+          gh release upload "$tag" "$PORTABLE_BIN" --repo ${{ github.repository }} --clobber

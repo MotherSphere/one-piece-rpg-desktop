@@ -19,14 +19,27 @@ Application desktop native (Windows, macOS, Linux) qui encapsule le jeu navigate
 
 Va dans la section **[Releases](../../releases)** et prends l'installateur correspondant à ton OS :
 
-| OS | Fichier |
-|---|---|
-| Windows | `.msi` (recommandé) ou `.exe` (NSIS) |
-| macOS Apple Silicon (M1/M2/M3/M4) | `.dmg` `aarch64` |
-| macOS Intel | `.dmg` `x64` |
-| Debian / Ubuntu / Mint | `.deb` |
-| Fedora / openSUSE | `.rpm` |
-| Autre Linux | `.AppImage` |
+### Installateurs (recommandé)
+
+| OS | Fichier | Notes |
+|---|---|---|
+| Windows | `.msi` ou `.exe` (NSIS) | Installe l'app + WebView2 si manquant |
+| macOS Apple Silicon (M1/M2/M3/M4) | `.dmg` `aarch64` | Glisser dans Applications |
+| macOS Intel | `.dmg` `x64` | Glisser dans Applications |
+| Debian / Ubuntu / Mint | `.deb` | `sudo apt install ./fichier.deb` |
+| Fedora / openSUSE | `.rpm` | `sudo dnf install ./fichier.rpm` |
+| Autre Linux | `.AppImage` | `chmod +x` puis double-clic |
+
+### Binaires portables (no-install)
+
+Pour ceux qui préfèrent un fichier unique à lancer sans installation :
+
+| OS | Fichier | Prérequis |
+|---|---|---|
+| Windows | `onepiecerpg-lejeu-windows-x64-portable.exe` | **WebView2** (préinstallé sur Win 10/11 ≥ 2022) |
+| macOS Apple Silicon | `onepiecerpg-lejeu-macos-arm64-portable` | `chmod +x`, autoriser dans Réglages > Sécurité |
+| macOS Intel | `onepiecerpg-lejeu-macos-x64-portable` | idem |
+| Linux x64 | `onepiecerpg-lejeu-linux-x64-portable` | `libwebkit2gtk-4.1` installé (Ubuntu 22.04+, Fedora 37+, Arch) |
 
 ---
 
