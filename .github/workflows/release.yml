@@ -19,19 +19,32 @@ jobs:
   # Wipe the previous nightly release+tag so the build matrix uploads to a
   # fresh, clean release. Skipped on tag pushes (versioned releases) and
   # manual dispatches.
-  cleanup-nightly:
+  prepare-nightly:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
-      - name: Delete previous nightly release & tag
+      - uses: actions/checkout@v4
+
+      - name: Reset nightly tag to current commit
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release delete nightly --repo ${{ github.repository }} --yes --cleanup-tag 2>/dev/null || true
+          # Wipe any previous nightly release + tag so the build matrix uploads
+          # to a fresh slate. Then create an empty release so all 4 build jobs
+          # can upload to it concurrently without racing on the create call.
+          gh release delete nightly --repo "${{ github.repository }}" --yes --cleanup-tag 2>/dev/null || true
+          git tag -f nightly
+          git push -f origin nightly
+          gh release create nightly \
+            --repo "${{ github.repository }}" \
+            --title "Nightly (build automatique)" \
+            --notes "🌙 Build automatique du dernier commit \`main\` (\`${{ github.sha }}\`). Cette release est écrasée à chaque push sur main." \
+            --prerelease \
+            --target "${{ github.sha }}"
 
   build:
-    needs: [cleanup-nightly]
-    if: always() && (needs.cleanup-nightly.result == 'success' || needs.cleanup-nightly.result == 'skipped')
+    needs: [prepare-nightly]
+    if: always() && (needs.prepare-nightly.result == 'success' || needs.prepare-nightly.result == 'skipped')
     strategy:
       fail-fast: false
       matrix:
@@ -142,16 +155,16 @@ jobs:
         run: |
           case "${{ matrix.platform }}" in
             windows-latest)
-              src="src-tauri/target/release/one-piece-rpg-desktop.exe"
+              src="target/release/one-piece-rpg-desktop.exe"
               dst="onepiecerpg-lejeu-windows-x64-portable.exe"
               ;;
             ubuntu-22.04)
-              src="src-tauri/target/release/one-piece-rpg-desktop"
+              src="target/release/one-piece-rpg-desktop"
               dst="onepiecerpg-lejeu-linux-x64-portable"
               ;;
             macos-latest)
               target="${{ matrix.rust-targets }}"
-              src="src-tauri/target/${target}/release/one-piece-rpg-desktop"
+              src="target/${target}/release/one-piece-rpg-desktop"
               if [[ "$target" == "aarch64-apple-darwin" ]]; then
                 dst="onepiecerpg-lejeu-macos-arm64-portable"
               else
